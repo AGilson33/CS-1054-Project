@@ -1,0 +1,27 @@
+import java.util.*;
+import java.awt.*;
+import javax.swing.*;
+
+public class GameProjectFrame extends JFrame
+{
+   public GameProjectFrame()
+   {
+      //Create original and amazing videogame name
+      super("Geometry Frolic");
+      
+      //Create new GameProjectPanel and setSize
+      Container contents = getContentPane();
+      GameProjectPanel game = new GameProjectPanel();
+      contents.add(game);
+      setSize(832, 654);
+      setVisible(true);
+   }
+   
+   //Create JFrame in main and setLocationRelativeTo to center frame
+   public static void main (String [] args)
+   {
+      GameProjectFrame theGame = new GameProjectFrame();
+      theGame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+      theGame.setLocationRelativeTo(null);
+   }
+}
