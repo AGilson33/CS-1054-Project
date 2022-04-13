@@ -1,0 +1,574 @@
+import java.util.ArrayList;
+import java.util.Scanner;
+import java.lang.*;
+import java.awt.*;
+import javax.swing.*;
+import java.io.*;
+import java.awt.event.*;
+
+public class GameProjectPanel extends JPanel
+{
+   //Create ArrayList of GameObjects to be used with the rest of the program. Create the Player block and Victory block as well
+   ArrayList<ArrayList<GameObject>> blocks = new ArrayList<ArrayList<GameObject>>();
+   Player player;
+   VictoryBlock vicBlock;
+   
+   //Create directional booleans for left and right movements, jump, and gravity
+   boolean left;
+   boolean right;
+   boolean jump;
+   boolean grav;
+   
+   //Create ints for gravity (n) and jump (w)
+   int addN = 0;
+   int n;
+   int addW = 7;
+   int w;
+   
+   //Create boolean for victory
+   boolean victory = false;   
+   
+   public GameProjectPanel()
+   {
+      super();
+      
+      //Create KeyListener and set Background color
+      addKeyListener(new KeyEventDemo());
+      setFocusable(true);
+      setBackground(new Color(54, 14, 81));
+      setPreferredSize(new Dimension(820,620));
+      setVisible(true);
+      
+      //Create ints for starting player position, row count, and column count to be scanned from the GameData file
+      int xStart;
+      int yStart;
+      int rowCount;
+      int colCount;
+      
+      //Create Arraylist that will be filled with map data from Gamedata file
+      ArrayList<ArrayList<Integer>> mapData = new ArrayList<ArrayList<Integer>>();      
+      
+      //Create timer
+      Timer t = new Timer(10, new TimeListener());
+      t.start();
+      
+      //Throw try
+      try
+      {      
+         //Create Scanner for GameData and scan in starting player position and size of map
+         Scanner scan = new Scanner(new File("GameData.txt"));
+         xStart = scan.nextInt();
+         yStart = scan.nextInt();
+         rowCount = scan.nextInt();
+         colCount = scan.nextInt();
+         
+         //Create for loop to scan in map data
+         for (int i = 0; i < rowCount; i++)
+         {
+            ArrayList<Integer> rowData = new ArrayList<Integer>();;
+            for (int j = 0; j < colCount; j++)
+            {              
+               rowData.add(scan.nextInt());
+            }
+            
+            mapData.add(rowData);
+         }
+         
+         //Create for loop to fill ArrayList with GameObjects based on map data
+         for (int i = 0; i < rowCount; i++)
+         {
+            ArrayList<GameObject> blockRow = new ArrayList<GameObject>();
+            for (int j = 0; j < colCount; j++)
+            {
+               //Add 10 to positions to account for map border
+               int posX = 10+j*25;
+               int posY = 10+i*25;
+               Color color;
+               
+               //if map data = 0, no block
+               if (mapData.get(i).get(j) == 0)
+               {
+                  blockRow.add(null);
+               }
+               
+               //if map data = 1, Block with custom color
+               if (mapData.get(i).get(j) == 1)
+               {         
+                  color = new Color(39, 148, 181);
+                  Block block = new Block(posX, posY, color);
+                  blockRow.add(block);
+               }
+               
+               //if map data = 2, VictoryBlock with custom color
+               if (mapData.get(i).get(j) == 2)
+               {
+                  color = new Color(157, 27, 36);
+                  vicBlock = new VictoryBlock(posX, posY, color);
+                  blockRow.add(vicBlock);
+               }
+            }
+            
+            blocks.add(blockRow);
+         }
+         
+         //Custom color for Player
+         Color color = new Color(16, 105, 40);
+         player = new Player(xStart*25+10, yStart*25+10, color);         
+      }
+         
+      //Throw try
+      catch (FileNotFoundException fnfe)
+      {
+         System.out.println("File does not exist.");
+      } 
+   }
+   
+   //Create paintComponent
+   public void paintComponent(Graphics g)
+   {
+      super.paintComponent(g);
+         
+      //setColor for outer border
+      g.setColor(Color.BLACK);
+      
+      //Create Rects for outer 10-pix border
+      g.fillRect(0, 0, 820, 10);
+      g.fillRect(0, 0, 10, 620);
+      g.fillRect(810, 0, 10, 620);
+      g.fillRect(0, 610, 820, 10);
+      
+      //for loop to draw GameObjects from ArrayList
+      for (int i = 0; i < blocks.size(); i++)
+      {
+         for (int j = 0; j < blocks.get(i).size(); j++)
+         {
+            GameObject block = blocks.get(i).get(j);
+            if (block == null)
+            {
+            }
+            else
+            {
+               block.draw(g);
+            }
+         }
+      }
+      
+      //Draw player and start gravity
+      player.draw(g);               
+      player.gravity();  
+   }  
+   
+   //Create GameObject class
+   public class GameObject
+   {
+      protected int posX;
+      protected int posY;
+      protected Color color;
+      
+      public GameObject(int posX, int posY, Color color)
+      {
+         this.posX = posX;
+         this.posY = posY;
+         this.color = color;   
+      }
+      
+      //Accessors for x pos, y pos, and Color
+      public int getPosX()
+      {
+         return posX;
+      }
+      
+      public int getPosY()
+      {
+         return posY;
+      }
+      
+      public Color getColor()
+      {
+         return color;
+      }
+      
+      //Create collides method from given pseudocode
+      public boolean collides(GameObject gObject)
+      {
+         if (gObject.getPosX() == posX && gObject.getPosY() == posY && gObject.getColor() == color)
+         {
+            return false;
+         }
+         
+         else
+         {
+            int topThis = gObject.getPosY();
+            int bottomThis = gObject.getPosY() + 24;
+            int leftThis = gObject.getPosX();
+            int rightThis = gObject.getPosX() + 24;
+            int topOther = posY;
+            int bottomOther = posY + 24;
+            int leftOther = posX;
+            int rightOther = posX + 24;
+            
+            if (! (bottomThis < topOther || topThis > bottomOther || leftThis > rightOther || rightThis < leftOther))
+            {
+               return true;
+            }
+            
+            else
+            {
+               return false;
+            }
+         }
+      }
+      
+      //Create draw method
+      public void draw(Graphics g)
+      {
+         g.setColor(color);
+         g.fillRect(posX, posY, 25, 25);
+      }
+   }    
+   
+   //Create Player class that extends GameObject and has extra methods
+   public class Player extends GameObject
+   {  
+      public Player(int posX, int posY, Color color)
+      {
+         super(posX, posY, color);
+      }
+            
+      //Create jump method that works simiar to move by checking if jump can be carried out using collides method
+      public void jump()
+      {
+         posY--;
+         for (int i = 0; i < blocks.size(); i++)
+         {
+            for (int j = 0; j < blocks.get(i).size(); j++)
+            {
+               if (blocks.get(i).get(j) != null)
+               {
+                  if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 26 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 26)
+                  {
+                     //if collision, no more jump
+                     if (player.collides(blocks.get(i).get(j)))
+                     {
+                        posY++;
+                        w = 0;
+                     }
+                     
+                     //if no collision, height of jump = 7 and gravity also = true
+                     else
+                     {
+                        posY++;
+                        w = 7;
+                        grav = true;                        
+                     }                     
+                  }
+               }
+            }
+         }      
+      }
+      
+      //Create gravity method that works similar to move and jump
+      public void gravity()
+      {
+         posY++;     
+            
+         for (int i = 0; i < blocks.size(); i++)
+         {
+            for (int j = 0; j < blocks.get(i).size(); j++)
+            {
+               if (blocks.get(i).get(j) != null)
+               {
+                  if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 26 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 26)
+                  {
+                     //if collides, no gravity displacement
+                     if (player.collides(blocks.get(i).get(j)))
+                     {
+                        posY--;
+                        grav = false;
+                        n = 0;                                           
+                     } 
+                     
+                     //else, gravity displacement
+                     else
+                     {
+                        grav = true;                             
+                     }                                            
+                  }
+               }
+            }
+         }                        
+      }
+           
+      //Create move method
+      public void move(int x, int y)
+      {       
+         //For downward movement (gravity)
+         if (y > 0)
+         {
+            //Make hypothetical movement
+            posY+= n;     
+            
+            //For loops to run through GameObject ArrayList
+            for (int i = 0; i < blocks.size(); i++)
+            {
+               for (int j = 0; j < blocks.get(i).size(); j++)
+               {
+                  //if there is a GameObject at current index
+                  if (blocks.get(i).get(j) != null)
+                  {
+                     //if that GameObject is within 26 pixels of Player
+                     if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 26 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 26)
+                     {
+                        //if player collides with this object, hypothetical movement is detracted
+                        if (player.collides(blocks.get(i).get(j)))
+                        {
+                           //if the block is also the VictoryBlock, then victory = true and game is over
+                           if (player.collides(vicBlock))
+                           {
+                              victory = true;
+                           }
+                            
+                           posY-= n;                                              
+                        }                                         
+                     }
+                  }
+               }
+            }                           
+         }  
+         
+         //For right movement
+         if (x > 0)
+         {
+            posX++;     
+            
+            for (int i = 0; i < blocks.size(); i++)
+            {
+               for (int j = 0; j < blocks.get(i).size(); j++)
+               {
+                  if (blocks.get(i).get(j) != null)
+                  {
+                     if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 30 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 30)
+                     {
+                        if (player.collides(blocks.get(i).get(j)))
+                        {
+                           if (player.collides(vicBlock))
+                           {
+                              victory = true;
+                           }
+                           
+                           posX--;                                                   
+                        }                                                                  
+                     }
+                  }
+               }
+            }                      
+         }
+         
+         //For left movement
+         if (x < 0)
+         {
+            posX--;     
+            
+            for (int i = 0; i < blocks.size(); i++)
+            {
+               for (int j = 0; j < blocks.get(i).size(); j++)
+               {
+                  if (blocks.get(i).get(j) != null)
+                  {
+                     if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 26 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 26)
+                     {
+                        if (player.collides(blocks.get(i).get(j)))
+                        {
+                           if (player.collides(vicBlock))
+                           {
+                              victory = true;
+                           }
+                           
+                           posX++;                                                
+                        }                                          
+                     }
+                  }
+               }
+            }                      
+         }
+         
+         //For upwards movement (jump)
+         if (y < 0)
+         {
+            posY-= w;     
+            
+            for (int i = 0; i < blocks.size(); i++)
+            {
+               for (int j = 0; j < blocks.get(i).size(); j++)
+               {
+                  if (blocks.get(i).get(j) != null)
+                  {
+                     if (Math.abs(blocks.get(i).get(j).getPosX() - posX) <= 26 && Math.abs(blocks.get(i).get(j).getPosY() - posY) <= 26)
+                     {
+                        if (player.collides(blocks.get(i).get(j)))
+                        {
+                           if (player.collides(vicBlock))
+                           {
+                              victory = true;
+                           }
+                           
+                           //if collides, hypothetical movement detracted, jump variable = 0, and gravity = true
+                           posY+= w; 
+                           w = 0;
+                           grav = true;                                               
+                        }                                         
+                     }
+                  }
+               }
+            }                
+         }                     
+      }
+   }
+     
+   //Create simple Block class which extends GameObject
+   public class Block extends GameObject
+   {
+      public Block(int posX, int posY, Color color)
+      {
+         super(posX, posY, color);
+      }
+   }
+   
+   //Create simple VictoryBlock class which extends GameObject
+   public class VictoryBlock extends GameObject
+   {
+      public VictoryBlock(int posX, int posY, Color color)
+      {
+         super(posX, posY, color);
+      }
+   }
+   
+   //Create KeyListener for key input
+   public class KeyEventDemo implements KeyListener
+   {
+      public void keyTyped(KeyEvent e) {} 
+           
+      //if A or D released, left or right = false
+      public void keyReleased(KeyEvent e) 
+      {  
+         if(e.getKeyCode() == KeyEvent.VK_A)
+         {
+            left = false;            
+         }
+         
+         if(e.getKeyCode() == KeyEvent.VK_D)
+         {
+            right = false;        
+         }
+         
+         repaint();
+       }    
+         
+      public void keyPressed(KeyEvent e)
+      {
+         //if W pressed, jump method
+         if(e.getKeyCode() == KeyEvent.VK_W)
+         {
+            player.jump();
+         }
+         
+         //if A pressed, left = true
+         if(e.getKeyCode() == KeyEvent.VK_A)
+         {
+            left = true;
+         }
+         
+         //if D pressed, right = true
+         if(e.getKeyCode() == KeyEvent.VK_D)
+         {
+            right = true;
+         }         
+      }
+   }
+   
+   //Create TimeListener
+   public class TimeListener implements ActionListener
+   {  
+      public void actionPerformed(ActionEvent e)
+      {  
+         //if jump variable > 0, move method with negative y
+         //Jump variable w has a maximum of 7 (as determined by the jump method)
+         if (w > 0)
+         {
+            player.move(0, -1);
+            
+            //if w <=, w remains at 0
+            if (w <= 0)
+            {
+               w = 0;
+            }
+            
+            else
+            {
+               //if statement that subtracts 1 from w every 10 ticks of TimeListener
+               if (addW == 10)
+               {
+                  w--;
+                  addW = 0;
+               }
+               
+               else
+               {
+                  addW++;
+               }
+            }
+         }
+         
+         //if gravity = true, move method with positive y
+         if (grav)
+         {
+            //n (gravity variable) maximum originally 6, changed to 10 for greater gravity
+            player.move(0, 1);
+            
+            //if n >= 10, n remains at 10
+            if (n >= 10)
+            {
+               n = 10;
+            }
+            
+            //if statement that adds 1 to n once every 20 ticks of TimeListener
+            else
+            {
+               if (addN == 20)
+               {
+                  n++;
+                  addN = 0;
+               }
+               
+               else
+               {
+                  addN++;
+               }
+            }
+         }         
+         
+         //if left = true, move method with negative x           
+         if (left)
+         {
+            player.move(-1, 0);            
+         }                 
+         
+         //if right = true, move method with positive x
+         if (right)
+         {
+            player.move(1, 0);
+         }
+                  
+         //if victory = true, create victory JOptionPane that closes the program
+         if (victory)
+         {
+            JPanel victoryPanel = new JPanel();  
+            JOptionPane.showMessageDialog(victoryPanel, "VICTORY!");
+            System.exit(1);
+         }
+         
+         //repaint
+         repaint();
+      }         
+   }      
+}  
